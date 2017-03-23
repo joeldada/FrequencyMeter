@@ -15,6 +15,7 @@
 
 #include <xc.h>
 #include "lcd.h";
+#include <stdio.h>
 
 // BEGIN CONFIG
 #pragma config FOSC = HS // Oscillator Selection bits (HS oscillator)
@@ -27,46 +28,64 @@
 #pragma config CP = OFF // Flash Program Memory Code Protection bit (Code protection off)
 //END CONFIG
 
-int main()
-{
-    unsigned int a;
-    TRISB = 0x00;
+char i;
+
+unsigned long pulseCounter; // number of RB0 transition
+unsigned int timerCounterOverflow; // number of timer0 overflows
+unsigned char str[10]; // display result string
+unsigned char freqString[20];
+
+void interrupt ISR() {
+    if (INTF && INTE) {
+        INTF = 0;
+        pulseCounter++;
+    } else if (T0IF && T0IE) {
+        T0IF = 0;
+        timerCounterOverflow++;
+    }
+}
+
+int main() {
+    unsigned int shiftPosition;
+    TRISB = 0x01;
+    OPTION_REG = 0b11011000;
     Lcd_Init();
-    while(1)
-    {
-        Lcd_Clear();
-        Lcd_Set_Cursor(1,1);
-        Lcd_Write_String("LCD Library for");
-        Lcd_Set_Cursor(2,1);
-        Lcd_Write_String("MPLAB XC8");
-        __delay_ms(2000);
-        Lcd_Clear();
-        Lcd_Set_Cursor(1,1);
-        Lcd_Write_String("Developed By");
-        Lcd_Set_Cursor(2,1);
-        Lcd_Write_String("Jocletech");
-        __delay_ms(2000);
-        Lcd_Clear();
-        Lcd_Set_Cursor(1,1);
-        Lcd_Write_String("www.jocletech.com");
+    Lcd_Clear();
+    Lcd_Set_Cursor(1, 1);
+    Lcd_Write_String("LCD Library for");
+    Lcd_Set_Cursor(2, 1);
+    Lcd_Write_String("MPLAB XC8");
+    __delay_ms(2000);
+    Lcd_Clear();
+    Lcd_Set_Cursor(1, 1);
+    Lcd_Write_String("Developed By");
+    Lcd_Set_Cursor(2, 1);
+    Lcd_Write_String("Jocletech");
+    __delay_ms(2000);
+    Lcd_Clear();
+    Lcd_Set_Cursor(1, 1);
+    Lcd_Write_String("www.jocletech.com");
 
-        for(a=0;a<15;a++)
-        {
-            __delay_ms(300);
-            Lcd_Shift_Left();
-        }
+    for (shiftPosition = 0; shiftPosition < 15; shiftPosition++) {
+        __delay_ms(300);
+        Lcd_Shift_Left();
+    }
 
-        for(a=0;a<15;a++)
-        {
-            __delay_ms(300);
-            Lcd_Shift_Right();
-        }
+    for (shiftPosition = 0; shiftPosition < 15; shiftPosition++) {
+        __delay_ms(300);
+        Lcd_Shift_Right();
+    }
 
+    while (1) {
+        INTCON = 0b10110000;
+        pulseCounter = 0;
+        timerCounterOverflow = 0;
+        while (timerCounterOverflow < 19532);
+        GIE = 0;
+        sprintf(freqString, "Freq- %i", pulseCounter);
         Lcd_Clear();
-        Lcd_Set_Cursor(2,1);
-        Lcd_Write_Char('e');
-        Lcd_Write_Char('S');
-        __delay_ms(2000);
+        Lcd_Set_Cursor(1, 1);
+        Lcd_Write_String(freqString);
     }
     return 0;
 }
